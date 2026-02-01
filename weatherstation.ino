@@ -39,6 +39,7 @@
 
 #define ENABLE_GxEPD2_GFX 0
 
+#include <WiFi.h>
 #include <GxEPD2_3C.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 
@@ -74,9 +75,14 @@ RTC_DATA_ATTR float humHistory[MAX_POINTS] = { 0 };
 RTC_DATA_ATTR float pressureHistory[MAX_POINTS] = { 0 };
 RTC_DATA_ATTR float luxHistory[MAX_POINTS] = { 0 };
 RTC_DATA_ATTR int historyIndex = 0;
+RTC_DATA_ATTR bool historyValid = false;
 
 // ================== Setup ==================
 void setup() {
+  setCpuFrequencyMhz(80);
+  btStop();  // disable Bluetooth
+  WiFi.mode(WIFI_OFF);
+
   // --- Sensor power pin ---
   pinMode(SENSORS_VCC, OUTPUT);
   digitalWrite(SENSORS_VCC, HIGH);  // turn on sensors first
@@ -122,9 +128,6 @@ void updateDisplay() {
   int retries = 0;
   const int maxRetries = 5;
 
-  float pressure = bmp.readPressure() / 100.0;
-  float lux = lightMeter.readLightLevel();
-
   while ((isnan(temp) || isnan(hum)) && retries < maxRetries) {
     temp = dht.readTemperature();
     hum = dht.readHumidity();
@@ -132,12 +135,33 @@ void updateDisplay() {
     retries++;
   }
 
-  // --- Save in history arrays ---
-  tempHistory[historyIndex] = temp;
-  humHistory[historyIndex] = hum;
-  pressureHistory[historyIndex] = pressure;
-  luxHistory[historyIndex] = lux;
-  historyIndex = (historyIndex + 1) % MAX_POINTS;
+  bool validDHT = !isnan(temp) && !isnan(hum);
+
+  float pressure = NAN;
+  float lux = NAN;
+
+  if (validDHT) {
+    pressure = bmp.readPressure() / 100.0;
+    lux = lightMeter.readLightLevel();
+  }
+
+  if (validDHT) {
+    if (!historyValid) {
+      for (int i = 0; i < MAX_POINTS; i++) {
+        tempHistory[i] = temp;
+        humHistory[i] = hum;
+        pressureHistory[i] = pressure;
+        luxHistory[i] = lux;
+      }
+      historyValid = true;
+    }
+
+    tempHistory[historyIndex] = temp;
+    humHistory[historyIndex] = hum;
+    pressureHistory[historyIndex] = pressure;
+    luxHistory[historyIndex] = lux;
+    historyIndex = (historyIndex + 1) % MAX_POINTS;
+  }
 
   display.setFullWindow();
   display.firstPage();
@@ -208,21 +232,33 @@ void updateDisplay() {
 // ================== Draw Trend with Min/Max Markers ==================
 void drawTrendWithMinMax(float *data, int x, int y, int w, int h, int count) {
   // --- Find min/max ---
-  float minVal = data[0], maxVal = data[0];
-  for (int i = 1; i < count; i++) {
-    if (data[i] < minVal) minVal = data[i];
-    if (data[i] > maxVal) maxVal = data[i];
-  }
-  if (minVal == maxVal) maxVal = minVal + 1;  // avoid divide by zero
+  float minVal = data[0];
+  float maxVal = data[0];
 
-  // --- Draw line ---
-  int px = x;
   for (int i = 1; i < count; i++) {
-    int py1 = y + h - (int)((data[i - 1] - minVal) * h / (maxVal - minVal));
-    int py2 = y + h - (int)((data[i] - minVal) * h / (maxVal - minVal));
-    int px2 = x + i * w / (count - 1);
-    display.drawLine(px, py1, px2, py2, GxEPD_BLACK);
-    px = px2;
+    float v = data[i];
+    if (v < minVal) minVal = v;
+    if (v > maxVal) maxVal = v;
+  }
+
+  // Avoid divide-by-zero
+  if (minVal == maxVal) maxVal = minVal + 1.0f;
+
+  // --- Precompute scale factor (ONLY float division here) ---
+  float scale = (float)h / (maxVal - minVal);
+
+  // --- Draw trend line ---
+  int lastX = x;
+  int lastY = y + h - (int)((data[0] - minVal) * scale);
+
+  for (int i = 1; i < count; i++) {
+    int px = x + (i * w) / (count - 1);
+    int py = y + h - (int)((data[i] - minVal) * scale);
+
+    display.drawLine(lastX, lastY, px, py, GxEPD_BLACK);
+
+    lastX = px;
+    lastY = py;
   }
 
   // --- Draw min/max markers ---
