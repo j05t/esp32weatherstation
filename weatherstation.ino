@@ -116,10 +116,6 @@ void loop() {
 
 // ================== Display ==================
 void updateDisplay() {
-  // --- Power sensors before reading ---
-  digitalWrite(SENSORS_VCC, HIGH);
-  delay(50);  // short delay to ensure stable readings
-
   // --- Read sensors ---
   float temp = NAN;
   float hum = NAN;
@@ -135,8 +131,6 @@ void updateDisplay() {
     if (isnan(temp) || isnan(hum)) delay(500);  // wait before retry
     retries++;
   }
-  // --- Turn off sensors to save power ---
-  digitalWrite(SENSORS_VCC, LOW);
 
   // --- Save in history arrays ---
   tempHistory[historyIndex] = temp;
