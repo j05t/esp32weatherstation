@@ -54,6 +54,7 @@
 #define DC_PIN 17
 
 // 2.13'' EPD Module
+// https://github.com/WeActStudio/WeActStudio.EpaperModule/blob/master/Example/EpaperModuleTest_Arduino_ESP32/EpaperModuleTest_Arduino_ESP32.ino
 GxEPD2_3C<GxEPD2_213_Z98c, GxEPD2_213_Z98c::HEIGHT> display(
   GxEPD2_213_Z98c(CS_PIN, DC_PIN, RES_PIN, BUSY_PIN));
 
