@@ -68,6 +68,9 @@ DHT dht(DHTPIN, DHTTYPE);
 Adafruit_BMP085 bmp;
 BH1750 lightMeter;
 
+// ================== Measurement Interval ==================
+#define INTERVAL_MINUTES 10  // measurement & update interval in minutes
+
 // ================== Trend Data ==================
 #define MAX_POINTS 20
 RTC_DATA_ATTR float tempHistory[MAX_POINTS] = { 0 };
@@ -111,7 +114,7 @@ void setup() {
   digitalWrite(SENSORS_VCC, LOW);
 
   // --- Deep sleep for 5 minutes ---
-  esp_sleep_enable_timer_wakeup(5 * 60 * 1000000ULL);  // 5 min
+  esp_sleep_enable_timer_wakeup(INTERVAL_MINUTES * 60 * 1000000ULL);  // interval in µs
   esp_deep_sleep_start();
 }
 
