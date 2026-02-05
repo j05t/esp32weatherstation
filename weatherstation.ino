@@ -1,13 +1,13 @@
 /*
   ESP32 Weather Station with 2.13" BWR ePaper Display
   Optimized for battery use: sensors powered via one GPIO, deep sleep
-  DHT11 sensor stabilization fix included
+  DHT11 sensor stabilization fix
   No Serial output to save power
   Display only updates if sensor readings change by a meaningful amount
 
-  Pinout:
-
   --- ePaper Module (WeActStudio 2.13" BWR) ---
+  SCL(SCK)  -> ESP32 GPIO 18
+  SDA(MOSI) -> ESP32 GPIO 23
   CS   -> ESP32 GPIO 5
   DC   -> ESP32 GPIO 17
   RST  -> ESP32 GPIO 16
